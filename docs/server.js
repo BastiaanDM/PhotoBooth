@@ -7,12 +7,17 @@ require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "https://bastiaandm.github.io",
+        methods: ["GET", "POST"]
+    }
+});
 const sessions = {};
 
 app.use(express.static("."));
-server.listen(3000, () => console.log("Server runing on port 3000"));
-
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 app.get("/turn-credentials", (req, res) => {
     res.json({
