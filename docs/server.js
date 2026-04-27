@@ -2,10 +2,14 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io")
 require("dotenv").config();
+const cors = require("cors");
 
 // ---- Setup ----
 
 const app = express();
+app.use(cors({
+    origin: "https://bastiaandm.github.io"
+}));
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
