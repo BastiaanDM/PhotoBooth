@@ -144,46 +144,61 @@ async function handleIceCandidate(candidate) {
 }
 
 async function getTurnCredentials() {
-    const response = await fetch("/turn-credentials");
-    return await response.json();
+    try {
+        const response = await fetch("/turn-credentials");
+        return await response.json();
+    } catch (e) {
+        return { urls: [], username: null, credential: null };
+    }
 }
 
 
 // ---- Socket.io ----
 
-const socket = io();
+let socket = null;
+if (typeof io !== "undefined") {
+    socket = io();
+} else {
+    console.log("No server available, running in standalone mode");
+}
 
-socket.on("session-created", (code) => {
-    sessionCode = code;
-    sessionCodeEl.textContent = code;
-    sessionCodeDisplay.style.display = "block";
-    sessionStatus.textContent = "Waiting for someone to join...";
-});
+if (!socket) {
+    document.getElementById("session-ui").style.display = "none";
+}
 
-socket.on("session-joined", (code) => {
-    sessionCode = code;
-    sessionStatus.textContent = `Joined session ${code}!`;
-});
+if (socket) {
+    socket.on("session-created", (code) => {
+        sessionCode = code;
+        sessionCodeEl.textContent = code;
+        sessionCodeDisplay.style.display = "block";
+        sessionStatus.textContent = "Waiting for someone to join...";
+    });
 
-socket.on("session-not-found", () => {
-    sessionStatus.textContent = "Session not found, check your code.";
-});
+    socket.on("session-joined", (code) => {
+        sessionCode = code;
+        sessionStatus.textContent = `Joined session ${code}!`;
+    });
 
-socket.on("user-joined", () => {
-    sessionStatus.textContent = "Someone joined your session!";
-    startCall();
-});
+    socket.on("session-not-found", () => {
+        sessionStatus.textContent = "Session not found, check your code.";
+    });
 
-socket.on("offer", async (offer) => await handleOffer(offer));
-socket.on("answer", async (answer) => await handleAnswer(answer));
-socket.on("ice-candidate", async (candidate) => await handleIceCandidate(candidate));
-socket.on("take-photos", () => takePictures());
+    socket.on("user-joined", () => {
+        sessionStatus.textContent = "Someone joined your session!";
+        startCall();
+    });
+
+    socket.on("offer", async (offer) => await handleOffer(offer));
+    socket.on("answer", async (answer) => await handleAnswer(answer));
+    socket.on("ice-candidate", async (candidate) => await handleIceCandidate(candidate));
+    socket.on("take-photos", () => takePictures());
+}
 
 
 // ---- Event Listeners ----
 
 captureButton.addEventListener("click", (ev) => {
-    if (sessionCode) {
+    if (socket && sessionCode) {
         socket.emit("take-photos", sessionCode);
     } else {
         takePictures();
@@ -206,11 +221,13 @@ toggleButton.addEventListener("click", () => {
     }
 });
 
-createSessionButton.addEventListener("click", () => socket.emit("create-session"));
+createSessionButton.addEventListener("click", () => {
+    if (socket) socket.emit("create-session");
+});
 
 joinSessionButton.addEventListener("click", () => {
     const code = sessionCodeInput.value.trim().toUpperCase();
-    if (code) socket.emit("join-session", code);
+    if (socket && code) socket.emit("join-session", code);
 });
 
 
