@@ -157,7 +157,7 @@ async function getTurnCredentials() {
 
 let socket = null;
 if (typeof io !== "undefined") {
-    socket = io();
+    socket = io("https://photobooth-txp9.onrender.com");
 } else {
     console.log("No server available, running in standalone mode");
 }
