@@ -149,12 +149,16 @@ async function handleIceCandidate(candidate) {
 }
 
 async function getTurnCredentials() {
-    try {
-        const response = await fetch("/turn-credentials");
-        return await response.json();
-    } catch (e) {
-        return { urls: [], username: null, credential: null };
+    const response = await fetch("https://photobooth-txp9.onrender.com/turn-credentials");
+    const data = await response.json();
+
+    console.log("TURN FROM SERVER:", data);
+
+    if (!data.urls || !Array.isArray(data.urls)) {
+        throw new Error("Invalid TURN config: missing urls");
     }
+
+    return data;
 }
 
 
