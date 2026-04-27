@@ -88,6 +88,11 @@ function getActiveStream() {
 
 async function createPeerConnection() {
     const turn = await getTurnCredentials();
+
+    console.log("TURN RAW:", turn);
+    console.log("URLs:", turn.urls, Array.isArray(turn.urls));
+    console.log("USERNAME:", turn.username);
+    console.log("CRED:", turn.credential);
     
     peerConnection = new RTCPeerConnection({
         iceServers: [
