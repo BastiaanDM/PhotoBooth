@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photobooth</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div id="session-ui">
+        <div id="join-ui">
+            <button id="create-session-button">Create Session</button>
+            <input id="session-code-input" placeholder="Enter code" maxlength="6"/>
+            <button id="join-session-button">Join Session</button>
+        </div>
+        <div id="session-code-display" style="display:none">
+            Session Code: <strong id="session-code"></strong>
+        </div>
+        <p id="session-status"></p>
+    </div>
+
+    <div class="camera">
+        <canvas id="output-canvas"></canvas>
+        <video id="video" autoplay playsinline>Video error</video>
+        <video id="remote-video" autoplay playsinline></video>
+        <button id="toggle-button">Remove Background: OFF</button>
+        <button id="capture-button">📸 Take Photo</button>
+    </div>
+
+
+    <div class="photobooth-strip" id="strip">
+        <img id="photo1" src="" alt="Photo 1"/>
+        <img id="photo2" src="" alt="Photo 2"/>
+        <img id="photo3" src="" alt="Photo 3"/>
+        <p id="date-label"></p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+    <script src="camera.js"></script>
+    
+</body>
+</html>
