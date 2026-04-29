@@ -105,27 +105,36 @@ function drawComposite() {
 
     if (removeBackground || remoteRemoveBackground) {
         compositeSlot.style.display = "flex";
-        compositeCanvas.width = W;
-        compositeCanvas.height = H;
+
+        // only set dimensions once, not every frame
+        if (compositeCanvas.width !== W || compositeCanvas.height !== H) {
+            compositeCanvas.width = W;
+            compositeCanvas.height = H;
+        }
 
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
+            // I have removeBG on: draw remote as background (mirrored), my segmented self on top
             if (remoteVideo.readyState >= 2) {
-            // mirror just the background layer
                 compositeCtx.save();
                 compositeCtx.translate(W, 0);
                 compositeCtx.scale(-1, 1);
                 compositeCtx.drawImage(remoteVideo, -W, 0, W, H);
                 compositeCtx.restore();
             }
-            compositeCtx.drawImage(localBuffer, 0, 0, W, H); // segmented self, not mirrored
+            compositeCtx.drawImage(localBuffer, 0, 0, W, H);
+        } else {
+            // remote has removeBG on: draw my raw as background, remote segmented on top
+            compositeCtx.drawImage(video, 0, 0, W, H);
+            compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
         }
+
     } else {
         compositeSlot.style.display = "none";
     }
-    video.style.display = "block";
 
+    video.style.display = "block";
     requestAnimationFrame(drawComposite);
 }
 
