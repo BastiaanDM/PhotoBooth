@@ -115,16 +115,18 @@ function drawComposite() {
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-            console.log("remoteVideo readyState:", remoteVideo.readyState, "srcObject:", remoteVideo.srcObject);
-            if (remoteVideo.readyState >= 2) {
-                compositeCtx.save();
-                compositeCtx.translate(W, 0);
-                compositeCtx.scale(-1, 1);
-                compositeCtx.drawImage(remoteVideo, -W, 0, W, H);
-                compositeCtx.restore();
-            }
-            compositeCtx.drawImage(localBuffer, 0, 0, W, H);
-        } else {
+    if (remoteVideo.readyState >= 2) {
+        compositeCtx.save();
+        compositeCtx.translate(W, 0);
+        compositeCtx.scale(-1, 1);
+        compositeCtx.drawImage(remoteVideo, -W, 0, W, H);
+        compositeCtx.restore();
+        
+        const pixel = compositeCtx.getImageData(W/2, H/2, 1, 1).data;
+        console.log("center pixel after bg draw:", pixel);
+    }
+    compositeCtx.drawImage(localBuffer, 0, 0, W, H);
+} else {
             compositeCtx.drawImage(video, 0, 0, W, H);
             compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
         }
