@@ -70,12 +70,20 @@ io.on("connection", (socket) => {
         console.log("a user disconnected");
     });
 
+    socket.on("toggle-background", (code, state) => {
+        socket.to(code).emit("background-toggled", state);
+    });
+
+    
+
 
     // ---- WebRTC Signaling ----
 
     socket.on("offer", (offer, code) => socket.to(code).emit("offer", offer));
     socket.on("answer", (answer, code) => socket.to(code).emit("answer", answer));
     socket.on("ice-candidate", (candidate, code) => socket.to(code).emit("ice-candidate", candidate));
+ 
+    
 
 
     // ---- Photo ----

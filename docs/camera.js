@@ -3,6 +3,7 @@
 const COUNTDOWN = 3;
 
 
+
 //---- State ----
 
 let photoIndex = 1;
@@ -13,6 +14,12 @@ let localStream = null;
 let sessionCode = null;
 let canvasStream = null;
 let processingVideo = false;
+
+// ---- Remote State ----
+
+let remoteRemoveBackground = false;
+let remoteProcessingVideo = false;
+let remoteCanvasStream = null;
 
 
 // ---- Html Elements ----
@@ -31,6 +38,8 @@ const sessionCodeInput = document.getElementById("session-code-input");
 const sessionCodeDisplay = document.getElementById("session-code-display");
 const sessionCodeEl = document.getElementById("session-code");
 const sessionStatus = document.getElementById("session-status");
+const remoteCanvas = document.getElementById("remote-canvas");
+const remoteCtx = remoteCanvas.getContext("2d");
 
 
 // ---- MediaPipe Segmentation Setup ----
@@ -39,9 +48,15 @@ const segmentation = new SelfieSegmentation({ locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
 });
 
+const remoteSegmentation = new SelfieSegmentation({ locateFile: (file) =>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+});
+
 remoteVideo.autoplay = true;
 
 segmentation.setOptions({ modelSelection: 1 });
+
+remoteSegmentation.setOptions({ modelSelection: 1 });
 
 segmentation.onResults((results) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -51,12 +66,28 @@ segmentation.onResults((results) => {
     ctx.globalCompositeOperation = "source-over";
 });
 
+remoteSegmentation.onResults((results) => {
+    remoteCtx.clearRect(0, 0, remoteCanvas.width, remoteCanvas.height);
+    remoteCtx.drawImage(results.segmentationMask, 0, 0, remoteCanvas.width, remoteCanvas.height);
+    remoteCtx.globalCompositeOperation = "source-in";
+    remoteCtx.drawImage(results.image, 0, 0, remoteCanvas.width, remoteCanvas.height);
+    remoteCtx.globalCompositeOperation = "source-over";
+});
+
 async function processVideo() {
     console.log("processVideo started");
     while (removeBackground) {
         await segmentation.send({ image: video });
     }
     processingVideo = false;
+}
+
+async function processRemoteVideo() {
+    console.log("processRemoteVideo started");
+    while (remoteRemoveBackground) {
+        await remoteSegmentation.send({ image: remoteVideo });
+    }
+    remoteProcessingVideo = false;
 }
 
 
@@ -112,10 +143,14 @@ async function createPeerConnection() {
     };
 
     peerConnection.ontrack = (event) => {
-        remoteVideo.srcObject = event.streams[0];
-        remoteVideo.style.display = "block";
-        console.log("remote stream received!", event.streams[0]);
+    remoteVideo.srcObject = event.streams[0];
+    remoteVideo.style.display = remoteRemoveBackground ? "none" : "block";
+    remoteVideo.onloadedmetadata = () => {
+        remoteCanvas.width = remoteVideo.videoWidth;
+        remoteCanvas.height = remoteVideo.videoHeight;
     };
+    console.log("remote stream received!", event.streams[0]);
+};
 
     const activeStream = getActiveStream();
     activeStream.getTracks().forEach(track => {
@@ -201,6 +236,17 @@ if (socket) {
     socket.on("answer", async (answer) => await handleAnswer(answer));
     socket.on("ice-candidate", async (candidate) => await handleIceCandidate(candidate));
     socket.on("take-photos", () => takePictures());
+
+    socket.on("background-toggled", (state) => {
+    remoteRemoveBackground = state;
+    remoteVideo.style.display = remoteRemoveBackground ? "none" : "block";
+    remoteCanvas.style.display = remoteRemoveBackground ? "block" : "none";
+
+    if (remoteRemoveBackground && !remoteProcessingVideo) {
+        remoteProcessingVideo = true;
+        processRemoteVideo();
+    }
+});
 }
 
 
@@ -233,6 +279,10 @@ toggleButton.addEventListener("click", () => {
         const videoTrack = newStream.getVideoTracks()[0];
         const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
         if (sender) sender.replaceTrack(videoTrack);
+    }
+
+    if (socket && sessionCode) {
+        socket.emit("toggle-background", sessionCode, removeBackground);
     }
 });
 
