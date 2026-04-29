@@ -219,6 +219,9 @@ toggleButton.addEventListener("click", () => {
     if (removeBackground && !canvasStream) {
         canvasStream = canvas.captureStream(30);
     }
+    if (removeBackground) {
+        processVideo();
+    }
     toggleButton.textContent = `Remove Background: ${removeBackground ? "ON" : "OFF"}`;
     toggleButton.classList.toggle("active", removeBackground);
     video.style.display = removeBackground ? "none" : "block";
