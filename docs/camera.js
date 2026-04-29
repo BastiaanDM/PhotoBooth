@@ -125,7 +125,6 @@ function drawComposite() {
             }
             compositeCtx.drawImage(localBuffer, 0, 0, W, H);
         } else {
-            // remote has removeBG on: draw my raw as background, remote segmented on top
             compositeCtx.drawImage(video, 0, 0, W, H);
             compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
         }
@@ -183,7 +182,7 @@ async function createPeerConnection() {
 
     peerConnection.ontrack = (event) => {
         remoteVideo.srcObject = event.streams[0];
-        remoteVideo.style.display = "block";
+        document.getElementById("remote-video-display").srcObject = event.streams[0];
         console.log("remote stream received!", event.streams[0]);
     };
 
