@@ -11,6 +11,7 @@ let removeBackground = false;
 let peerConnection = null;
 let localStream = null;
 let sessionCode = null;
+let canvasStream = null;
 
 
 // ---- Html Elements ----
@@ -42,8 +43,6 @@ remoteVideo.autoplay = true;
 segmentation.setOptions({ modelSelection: 1 });
 
 segmentation.onResults((results) => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
 
     ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
 
@@ -54,6 +53,7 @@ segmentation.onResults((results) => {
 });
 
 async function processVideo() {
+    if (!removeBackground) return;
     await segmentation.send({ image: video });
     requestAnimationFrame(processVideo);
 }
@@ -71,19 +71,18 @@ navigator.mediaDevices
 })
 
 video.addEventListener("canplay", () => {
-    if (!streaming) streaming = true;
-    processVideo();
+    if (!streaming) {
+        streaming = true;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+    }
 });
 
 
 // ---- WebRTC ----
 
 function getActiveStream() {
-    if (removeBackground) {
-        return canvas.captureStream(30);
-    } else {
-        return localStream;
-    }
+    return removeBackground ? canvasStream : localStream;
 }
 
 async function createPeerConnection() {
@@ -217,6 +216,9 @@ captureButton.addEventListener("click", (ev) => {
 
 toggleButton.addEventListener("click", () => {
     removeBackground = !removeBackground;
+    if (removeBackground && !canvasStream) {
+        canvasStream = canvas.captureStream(30);
+    }
     toggleButton.textContent = `Remove Background: ${removeBackground ? "ON" : "OFF"}`;
     toggleButton.classList.toggle("active", removeBackground);
     video.style.display = removeBackground ? "none" : "block";
