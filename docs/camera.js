@@ -176,6 +176,7 @@ async function createPeerConnection() {
 
     peerConnection.ontrack = (event) => {
         remoteVideo.srcObject = event.streams[0];
+        remoteVideo.style.display = "block";
         console.log("remote stream received!", event.streams[0]);
     };
 
