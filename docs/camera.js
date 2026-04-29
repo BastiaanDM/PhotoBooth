@@ -11,6 +11,7 @@ let peerConnection = null;
 let localStream = null;
 let sessionCode = null;
 let processingVideo = false;
+let compositeMode = false;
 
 // ---- Remote State ----
 
@@ -36,6 +37,15 @@ const sessionCodeDisplay = document.getElementById("session-code-display");
 const sessionCodeEl = document.getElementById("session-code");
 const sessionStatus = document.getElementById("session-status");
 
+// ---- Offscreen Buffers ----
+
+const localBuffer = new OffscreenCanvas(1, 1);
+const localBufCtx = localBuffer.getContext("2d");
+
+const remoteBuffer = new OffscreenCanvas(1, 1);
+const remoteBufCtx = remoteBuffer.getContext("2d");
+
+
 // ---- MediaPipe Segmentation Setup ----
 
 const segmentation = new SelfieSegmentation({ locateFile: (file) =>
@@ -50,19 +60,23 @@ segmentation.setOptions({ modelSelection: 1 });
 remoteSegmentation.setOptions({ modelSelection: 1 });
 
 segmentation.onResults((results) => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = "source-in";
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = "source-over";
+    localBuffer.width = results.image.width;
+    localBuffer.height = results.image.height;
+    localBufCtx.clearRect(0, 0, localBuffer.width, localBuffer.height);
+    localBufCtx.drawImage(results.segmentationMask, 0, 0, localBuffer.width, localBuffer.height);
+    localBufCtx.globalCompositeOperation = "source-in";
+    localBufCtx.drawImage(results.image, 0, 0, localBuffer.width, localBuffer.height);
+    localBufCtx.globalCompositeOperation = "source-over";
 });
 
 remoteSegmentation.onResults((results) => {
-    remoteCtx.clearRect(0, 0, remoteCanvas.width, remoteCanvas.height);
-    remoteCtx.drawImage(results.segmentationMask, 0, 0, remoteCanvas.width, remoteCanvas.height);
-    remoteCtx.globalCompositeOperation = "source-in";
-    remoteCtx.drawImage(results.image, 0, 0, remoteCanvas.width, remoteCanvas.height);
-    remoteCtx.globalCompositeOperation = "source-over";
+    remoteBuffer.width = results.image.width;
+    remoteBuffer.height = results.image.height;
+    remoteBufCtx.clearRect(0, 0, remoteBuffer.width, remoteBuffer.height);
+    remoteBufCtx.drawImage(results.segmentationMask, 0, 0, remoteBuffer.width, remoteBuffer.height);
+    remoteBufCtx.globalCompositeOperation = "source-in";
+    remoteBufCtx.drawImage(results.image, 0, 0, remoteBuffer.width, remoteBuffer.height);
+    remoteBufCtx.globalCompositeOperation = "source-over";
 });
 
 async function processVideo() {
@@ -81,6 +95,49 @@ async function processRemoteVideo() {
     remoteProcessingVideo = false;
 }
 
+
+// ---- Composite Draw Loop ----
+
+function drawComposite() {
+    const W = 320;
+    const H = 240;
+
+    if (removeBackground || remoteRemoveBackground) {
+        canvas.width = W;
+        canvas.height = H;
+        canvas.style.display = "block";
+        video.style.visibility = "hidden";
+        remoteVideo.style.visibility = "hidden";
+        remoteCanvas.style.display = "none";
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (removeBackground) {
+            // I have removeBG on:
+            // draw remote raw as background, draw my segmented self on top
+            if (remoteVideo.readyState >= 2) {
+                ctx.drawImage(remoteVideo, 0, 0, W, H);
+            }
+            ctx.drawImage(localBuffer, 0, 0, W, H);
+        } else {
+            // remote has removeBG on:
+            // draw my raw as background, draw remote segmented on top
+            ctx.drawImage(video, 0, 0, W, H);
+            ctx.drawImage(remoteBuffer, 0, 0, W, H);
+        }
+
+    } else {
+        // normal mode — show raw video feeds, hide canvas
+        canvas.style.display = "none";
+        remoteCanvas.style.display = "none";
+        video.style.visibility = "visible";
+        remoteVideo.style.visibility = remoteVideo.srcObject ? "visible" : "hidden";
+    }
+
+    requestAnimationFrame(drawComposite);
+}
+
+
 // ---- Camera Setup ----
 
 navigator.mediaDevices
@@ -88,7 +145,6 @@ navigator.mediaDevices
     .then((stream) => {
         localStream = stream;
         video.srcObject = stream;
-        video.style.display = "block";
         video.play();
     });
 
@@ -98,7 +154,9 @@ video.addEventListener("canplay", () => {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
     }
+    drawComposite();
 });
+
 
 // ---- WebRTC ----
 
@@ -124,11 +182,6 @@ async function createPeerConnection() {
 
     peerConnection.ontrack = (event) => {
         remoteVideo.srcObject = event.streams[0];
-        remoteVideo.style.display = "block";
-        remoteVideo.onloadedmetadata = () => {
-            remoteCanvas.width = remoteVideo.videoWidth;
-            remoteCanvas.height = remoteVideo.videoHeight;
-        };
         console.log("remote stream received!", event.streams[0]);
     };
 
@@ -173,6 +226,7 @@ async function getTurnCredentials() {
     return data;
 }
 
+
 // ---- Socket.io ----
 
 let socket = null;
@@ -215,15 +269,21 @@ if (socket) {
 
     socket.on("background-toggled", (state) => {
         remoteRemoveBackground = state;
-        remoteVideo.style.visibility = remoteRemoveBackground ? "hidden" : "visible";
-        remoteCanvas.style.display = remoteRemoveBackground ? "block" : "none";
 
-        if (remoteRemoveBackground && !remoteProcessingVideo) {
-            remoteProcessingVideo = true;
-            processRemoteVideo();
+        if (remoteRemoveBackground) {
+            toggleButton.disabled = true;
+            toggleButton.title = "Other person is already using this";
+            if (!remoteProcessingVideo) {
+                remoteProcessingVideo = true;
+                processRemoteVideo();
+            }
+        } else {
+            toggleButton.disabled = false;
+            toggleButton.title = "";
         }
     });
 }
+
 
 // ---- Event Listeners ----
 
@@ -246,8 +306,6 @@ toggleButton.addEventListener("click", () => {
 
     toggleButton.textContent = `Remove Background: ${removeBackground ? "ON" : "OFF"}`;
     toggleButton.classList.toggle("active", removeBackground);
-    video.style.visibility = removeBackground ? "hidden" : "visible";
-    canvas.style.display = removeBackground ? "block" : "none";
 
     if (socket && sessionCode) {
         socket.emit("toggle-background", sessionCode, removeBackground);
@@ -263,12 +321,13 @@ joinSessionButton.addEventListener("click", () => {
     if (socket && code) socket.emit("join-session", code);
 });
 
+
 // ---- Photo Logic ----
 
 function takePicture() {
-    const source = removeBackground ? canvas : video;
-    const width = removeBackground ? canvas.width : video.videoWidth;
-    const height = removeBackground ? canvas.height : video.videoHeight;
+    const source = (removeBackground || remoteRemoveBackground) ? canvas : video;
+    const width = source === canvas ? canvas.width : video.videoWidth;
+    const height = source === canvas ? canvas.height : video.videoHeight;
 
     const offscreen = new OffscreenCanvas(width, height);
     const context = offscreen.getContext("2d");
@@ -297,6 +356,7 @@ async function takePictures() {
     writeLabel();
     showStrip();
 }
+
 
 // ---- UI ----
 
@@ -343,11 +403,12 @@ function writeLabel() {
 }
 
 function clearPhoto() {
-    const offscreen = new OffscreenCanvas(video.videoWidth, video.videoHeight);
+    const offscreen = new OffscreenCanvas(video.videoWidth || 320, video.videoHeight || 240);
     const context = offscreen.getContext("2d");
     context.fillStyle = "#aaaaaa";
     hideStrip();
 }
+
 
 // ---- Helpers ----
 
@@ -368,6 +429,7 @@ function countdown(n, onTick) {
 }
 
 function foo() {}
+
 
 // ---- Init ----
 
