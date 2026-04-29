@@ -95,16 +95,33 @@ body {
 
 .camera {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.camera-slot {
+    display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
 }
 
-video, #output-canvas {
+.camera-label {
+    color: var(--navy-blue);
+    font-size: 0.9rem;
+    margin: 0;
+    letter-spacing: 0.05em;
+}
+
+video, #output-canvas, #composite-canvas, #remote-canvas {
+    width: 320px;
+    height: 240px;
     border-radius: 12px;
     border: 4px solid var(--petal-pink);
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    object-fit: cover;
 }
 
 #output-canvas {
@@ -119,6 +136,14 @@ video, #output-canvas {
     display: none;
 }
 
+#remote-video, #remote-canvas {
+    border-color: var(--baby-blue);
+    transform: scaleX(-1); /* mirror for testing */
+}
+
+#composite-canvas {
+    border-color: var(--gold);
+}
 
 /* ---- Buttons ---- */
 

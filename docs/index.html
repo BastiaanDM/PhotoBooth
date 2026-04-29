@@ -21,13 +21,23 @@
     </div>
 
     <div class="camera">
+    <div class="camera-slot">
+        <p class="camera-label">You</p>
+        <video id="video" autoplay playsinline></video>
         <canvas id="output-canvas"></canvas>
-        <video id="video" autoplay playsinline>Video error</video>
-        <canvas id="remote-canvas"></canvas>
-        <video id="remote-video" autoplay playsinline></video>
-        <button id="toggle-button">Remove Background: OFF</button>
-        <button id="capture-button">📸 Take Photo</button>
     </div>
+    <div class="camera-slot" id="composite-slot" style="display:none">
+        <p class="camera-label">Together</p>
+        <canvas id="composite-canvas"></canvas>
+    </div>
+    <div class="camera-slot">
+        <p class="camera-label">Them</p>
+        <video id="remote-video" autoplay playsinline></video>
+        <canvas id="remote-canvas" style="display:none"></canvas>
+    </div>
+    <button id="toggle-button">Remove Background: OFF</button>
+    <button id="capture-button">📸 Take Photo</button>
+</div>
 
 
     <div class="photobooth-strip" id="strip">

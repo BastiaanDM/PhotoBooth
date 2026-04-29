@@ -36,6 +36,9 @@ const sessionCodeInput = document.getElementById("session-code-input");
 const sessionCodeDisplay = document.getElementById("session-code-display");
 const sessionCodeEl = document.getElementById("session-code");
 const sessionStatus = document.getElementById("session-status");
+const compositeCanvas = document.getElementById("composite-canvas");
+const compositeCtx = compositeCanvas.getContext("2d");
+const compositeSlot = document.getElementById("composite-slot");
 
 // ---- Offscreen Buffers ----
 
@@ -103,36 +106,27 @@ function drawComposite() {
     const H = 240;
 
     if (removeBackground || remoteRemoveBackground) {
-        canvas.width = W;
-        canvas.height = H;
-        canvas.style.display = "block";
-        video.style.visibility = "hidden";
-        remoteVideo.style.visibility = "hidden";
-        remoteCanvas.style.display = "none";
+        compositeSlot.style.display = "flex";
+        compositeCanvas.width = W;
+        compositeCanvas.height = H;
 
-        ctx.clearRect(0, 0, W, H);
+        compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-            // I have removeBG on:
-            // draw remote raw as background, draw my segmented self on top
             if (remoteVideo.readyState >= 2) {
-                ctx.drawImage(remoteVideo, 0, 0, W, H);
+                compositeCtx.drawImage(remoteVideo, 0, 0, W, H);
             }
-            ctx.drawImage(localBuffer, 0, 0, W, H);
+            compositeCtx.drawImage(localBuffer, 0, 0, W, H);
         } else {
-            // remote has removeBG on:
-            // draw my raw as background, draw remote segmented on top
-            ctx.drawImage(video, 0, 0, W, H);
-            ctx.drawImage(remoteBuffer, 0, 0, W, H);
+            compositeCtx.drawImage(video, 0, 0, W, H);
+            compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
         }
-
     } else {
-        // normal mode — show raw video feeds, hide canvas
-        canvas.style.display = "none";
-        remoteCanvas.style.display = "none";
-        video.style.visibility = "visible";
-        remoteVideo.style.visibility = remoteVideo.srcObject ? "visible" : "hidden";
+        compositeSlot.style.display = "none";
     }
+    video.style.display = "block";
+    canvas.style.display = "none";
+    remoteCanvas.style.display = "none";
 
     requestAnimationFrame(drawComposite);
 }
@@ -325,9 +319,10 @@ joinSessionButton.addEventListener("click", () => {
 // ---- Photo Logic ----
 
 function takePicture() {
-    const source = (removeBackground || remoteRemoveBackground) ? canvas : video;
-    const width = source === canvas ? canvas.width : video.videoWidth;
-    const height = source === canvas ? canvas.height : video.videoHeight;
+    const inComposite = removeBackground || remoteRemoveBackground;
+    const source = inComposite ? compositeCanvas : video;
+    const width = inComposite ? compositeCanvas.width : video.videoWidth;
+    const height = inComposite ? compositeCanvas.height : video.videoHeight;
 
     const offscreen = new OffscreenCanvas(width, height);
     const context = offscreen.getContext("2d");
@@ -339,7 +334,6 @@ function takePicture() {
         photoIndex = photoIndex % 3 + 1;
     });
 }
-
 async function takePictures() {
     clearPhoto();
     await countdown(COUNTDOWN, showOverlay);
