@@ -134,7 +134,6 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     border-color: var(--baby-blue);
     object-fit: cover;
     display: block;
-    transform: scaleX(-1);
 }
 
 #composite-canvas {

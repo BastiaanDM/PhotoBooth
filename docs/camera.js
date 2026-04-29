@@ -115,7 +115,7 @@ function drawComposite() {
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-            // I have removeBG on: draw remote as background (mirrored), my segmented self on top
+            console.log("remoteVideo readyState:", remoteVideo.readyState, "srcObject:", remoteVideo.srcObject);
             if (remoteVideo.readyState >= 2) {
                 compositeCtx.save();
                 compositeCtx.translate(W, 0);
