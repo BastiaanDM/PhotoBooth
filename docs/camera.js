@@ -12,6 +12,7 @@ let peerConnection = null;
 let localStream = null;
 let sessionCode = null;
 let canvasStream = null;
+let processingVideo = false;
 
 
 // ---- Html Elements ----
@@ -43,17 +44,19 @@ remoteVideo.autoplay = true;
 segmentation.setOptions({ modelSelection: 1 });
 
 segmentation.onResults((results) => {
-
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
-
     ctx.globalCompositeOperation = "source-in";
     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
     ctx.globalCompositeOperation = "source-over";
 });
 
 async function processVideo() {
-    if (!removeBackground) return;
+    if (!removeBackground) {
+        processingVideo = false;
+        return;
+    }
+    processingVideo = true;
     await segmentation.send({ image: video });
     requestAnimationFrame(processVideo);
 }
@@ -219,7 +222,7 @@ toggleButton.addEventListener("click", () => {
     if (removeBackground && !canvasStream) {
         canvasStream = canvas.captureStream(30);
     }
-    if (removeBackground) {
+    if (removeBackground && !processingVideo) {
         processVideo();
     }
     toggleButton.textContent = `Remove Background: ${removeBackground ? "ON" : "OFF"}`;
