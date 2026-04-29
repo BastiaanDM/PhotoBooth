@@ -114,12 +114,14 @@ function drawComposite() {
 
         if (removeBackground) {
             if (remoteVideo.readyState >= 2) {
-                compositeCtx.drawImage(remoteVideo, 0, 0, W, H);
+            // mirror just the background layer
+                compositeCtx.save();
+                compositeCtx.translate(W, 0);
+                compositeCtx.scale(-1, 1);
+                compositeCtx.drawImage(remoteVideo, -W, 0, W, H);
+                compositeCtx.restore();
             }
-            compositeCtx.drawImage(localBuffer, 0, 0, W, H);
-        } else {
-            compositeCtx.drawImage(video, 0, 0, W, H);
-            compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
+            compositeCtx.drawImage(localBuffer, 0, 0, W, H); // segmented self, not mirrored
         }
     } else {
         compositeSlot.style.display = "none";

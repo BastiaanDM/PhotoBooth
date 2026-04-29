@@ -205,3 +205,8 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     margin: 8px 0 0 0;
     text-align: center;
 }
+
+#composite-canvas {
+    border-color: var(--gold);
+    transform: scaleX(-1);
+}
