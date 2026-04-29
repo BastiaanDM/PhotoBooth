@@ -52,13 +52,11 @@ segmentation.onResults((results) => {
 });
 
 async function processVideo() {
-    if (!removeBackground) {
-        processingVideo = false;
-        return;
+    console.log("processVideo started");
+    while (removeBackground) {
+        await segmentation.send({ image: video });
     }
-    processingVideo = true;
-    await segmentation.send({ image: video });
-    requestAnimationFrame(processVideo);
+    processingVideo = false;
 }
 
 
