@@ -2,9 +2,7 @@
 
 const COUNTDOWN = 3;
 
-
-
-//---- State ----
+// ---- State ----
 
 let photoIndex = 1;
 let streaming = false;
@@ -12,15 +10,12 @@ let removeBackground = false;
 let peerConnection = null;
 let localStream = null;
 let sessionCode = null;
-let canvasStream = null;
 let processingVideo = false;
 
 // ---- Remote State ----
 
 let remoteRemoveBackground = false;
 let remoteProcessingVideo = false;
-let remoteCanvasStream = null;
-
 
 // ---- Html Elements ----
 
@@ -29,7 +24,9 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("output-canvas");
 const ctx = canvas.getContext("2d");
 const remoteVideo = document.getElementById("remote-video");
-const strip = document.getElementById("strip"); 
+const remoteCanvas = document.getElementById("remote-canvas");
+const remoteCtx = remoteCanvas.getContext("2d");
+const strip = document.getElementById("strip");
 const captureButton = document.getElementById("capture-button");
 const toggleButton = document.getElementById("toggle-button");
 const createSessionButton = document.getElementById("create-session-button");
@@ -38,9 +35,6 @@ const sessionCodeInput = document.getElementById("session-code-input");
 const sessionCodeDisplay = document.getElementById("session-code-display");
 const sessionCodeEl = document.getElementById("session-code");
 const sessionStatus = document.getElementById("session-status");
-const remoteCanvas = document.getElementById("remote-canvas");
-const remoteCtx = remoteCanvas.getContext("2d");
-
 
 // ---- MediaPipe Segmentation Setup ----
 
@@ -52,10 +46,7 @@ const remoteSegmentation = new SelfieSegmentation({ locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
 });
 
-remoteVideo.autoplay = true;
-
 segmentation.setOptions({ modelSelection: 1 });
-
 remoteSegmentation.setOptions({ modelSelection: 1 });
 
 segmentation.onResults((results) => {
@@ -90,17 +81,16 @@ async function processRemoteVideo() {
     remoteProcessingVideo = false;
 }
 
-
 // ---- Camera Setup ----
 
 navigator.mediaDevices
-.getUserMedia({ video: true, audio: false })
-.then((stream) => {
-    localStream = stream;
-    video.srcObject = stream;
-    video.style.display = "block";
-    video.play();
-})
+    .getUserMedia({ video: true, audio: false })
+    .then((stream) => {
+        localStream = stream;
+        video.srcObject = stream;
+        video.style.display = "block";
+        video.play();
+    });
 
 video.addEventListener("canplay", () => {
     if (!streaming) {
@@ -110,21 +100,11 @@ video.addEventListener("canplay", () => {
     }
 });
 
-
 // ---- WebRTC ----
-
-function getActiveStream() {
-    return removeBackground ? canvasStream : localStream;
-}
 
 async function createPeerConnection() {
     const turn = await getTurnCredentials();
 
-    console.log("TURN RAW:", turn);
-    console.log("URLs:", turn.urls, Array.isArray(turn.urls));
-    console.log("USERNAME:", turn.username);
-    console.log("CRED:", turn.credential);
-    
     peerConnection = new RTCPeerConnection({
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
@@ -143,20 +123,19 @@ async function createPeerConnection() {
     };
 
     peerConnection.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
-    remoteVideo.style.display = remoteRemoveBackground ? "none" : "block";
-    remoteVideo.onloadedmetadata = () => {
-        remoteCanvas.width = remoteVideo.videoWidth;
-        remoteCanvas.height = remoteVideo.videoHeight;
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideo.style.display = "block";
+        remoteVideo.onloadedmetadata = () => {
+            remoteCanvas.width = remoteVideo.videoWidth;
+            remoteCanvas.height = remoteVideo.videoHeight;
+        };
+        console.log("remote stream received!", event.streams[0]);
     };
-    console.log("remote stream received!", event.streams[0]);
-};
 
-    const activeStream = getActiveStream();
-    activeStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, activeStream);
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
     });
-    
+
     return peerConnection;
 }
 
@@ -187,15 +166,12 @@ async function getTurnCredentials() {
     const response = await fetch("https://photobooth-txp9.onrender.com/turn-credentials");
     const data = await response.json();
 
-    console.log("TURN FROM SERVER:", data);
-
     if (!data.urls || !Array.isArray(data.urls)) {
         throw new Error("Invalid TURN config: missing urls");
     }
 
     return data;
 }
-
 
 // ---- Socket.io ----
 
@@ -238,17 +214,16 @@ if (socket) {
     socket.on("take-photos", () => takePictures());
 
     socket.on("background-toggled", (state) => {
-    remoteRemoveBackground = state;
-    remoteVideo.style.display = remoteRemoveBackground ? "none" : "block";
-    remoteCanvas.style.display = remoteRemoveBackground ? "block" : "none";
+        remoteRemoveBackground = state;
+        remoteVideo.style.visibility = remoteRemoveBackground ? "hidden" : "visible";
+        remoteCanvas.style.display = remoteRemoveBackground ? "block" : "none";
 
-    if (remoteRemoveBackground && !remoteProcessingVideo) {
-        remoteProcessingVideo = true;
-        processRemoteVideo();
-    }
-});
+        if (remoteRemoveBackground && !remoteProcessingVideo) {
+            remoteProcessingVideo = true;
+            processRemoteVideo();
+        }
+    });
 }
-
 
 // ---- Event Listeners ----
 
@@ -263,23 +238,16 @@ captureButton.addEventListener("click", (ev) => {
 
 toggleButton.addEventListener("click", () => {
     removeBackground = !removeBackground;
-    if (removeBackground && !canvasStream) {
-        canvasStream = canvas.captureStream(30);
-    }
+
     if (removeBackground && !processingVideo) {
+        processingVideo = true;
         processVideo();
     }
+
     toggleButton.textContent = `Remove Background: ${removeBackground ? "ON" : "OFF"}`;
     toggleButton.classList.toggle("active", removeBackground);
-    video.style.display = removeBackground ? "none" : "block";
+    video.style.visibility = removeBackground ? "hidden" : "visible";
     canvas.style.display = removeBackground ? "block" : "none";
-
-    if (peerConnection) {
-        const newStream = getActiveStream();
-        const videoTrack = newStream.getVideoTracks()[0];
-        const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
-        if (sender) sender.replaceTrack(videoTrack);
-    }
 
     if (socket && sessionCode) {
         socket.emit("toggle-background", sessionCode, removeBackground);
@@ -294,7 +262,6 @@ joinSessionButton.addEventListener("click", () => {
     const code = sessionCodeInput.value.trim().toUpperCase();
     if (socket && code) socket.emit("join-session", code);
 });
-
 
 // ---- Photo Logic ----
 
@@ -331,7 +298,6 @@ async function takePictures() {
     showStrip();
 }
 
-
 // ---- UI ----
 
 function showOverlay(text) {
@@ -363,7 +329,7 @@ function hideOverlay() {
 }
 
 function showStrip() {
-    strip.style.visibility ="visible";
+    strip.style.visibility = "visible";
 }
 
 function hideStrip() {
@@ -383,7 +349,6 @@ function clearPhoto() {
     hideStrip();
 }
 
-
 // ---- Helpers ----
 
 function countdown(n, onTick) {
@@ -399,19 +364,11 @@ function countdown(n, onTick) {
                 resolve();
             }
         }, 1000);
-    })
+    });
 }
 
-function foo(foo) {}
-
+function foo() {}
 
 // ---- Init ----
 
 clearPhoto();
-
-
-
-
-
-
-
