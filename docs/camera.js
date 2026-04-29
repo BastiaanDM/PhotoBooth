@@ -125,8 +125,6 @@ function drawComposite() {
         compositeSlot.style.display = "none";
     }
     video.style.display = "block";
-    canvas.style.display = "none";
-    remoteCanvas.style.display = "none";
 
     requestAnimationFrame(drawComposite);
 }
