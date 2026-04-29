@@ -133,12 +133,8 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     height: 240px;
     border-color: var(--baby-blue);
     object-fit: cover;
-    display: none;
-}
-
-#remote-video, #remote-canvas {
-    border-color: var(--baby-blue);
-    transform: scaleX(-1); /* mirror for testing */
+    display: block;
+    transform: scaleX(-1);
 }
 
 #composite-canvas {
