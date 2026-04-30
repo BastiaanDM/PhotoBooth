@@ -89,9 +89,10 @@ async function processVideo() {
 }
 
 async function processRemoteVideo() {
+    const remoteVideoDisplay = document.getElementById("remote-video-display");
     console.log("processRemoteVideo started");
     while (remoteRemoveBackground) {
-        await remoteSegmentation.send({ image: remoteVideo });
+        await remoteSegmentation.send({ image: remoteVideoDisplay });
     }
     remoteProcessingVideo = false;
 }
@@ -102,11 +103,11 @@ async function processRemoteVideo() {
 function drawComposite() {
     const W = 320;
     const H = 240;
+    const remoteVideoDisplay = document.getElementById("remote-video-display");
 
     if (removeBackground || remoteRemoveBackground) {
         compositeSlot.style.display = "flex";
 
-        // only set dimensions once, not every frame
         if (compositeCanvas.width !== W || compositeCanvas.height !== H) {
             compositeCanvas.width = W;
             compositeCanvas.height = H;
@@ -115,20 +116,37 @@ function drawComposite() {
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-    if (remoteVideo.readyState >= 2) {
-        compositeCtx.save();
-        compositeCtx.translate(W, 0);
-        compositeCtx.scale(-1, 1);
-        compositeCtx.drawImage(remoteVideo, -W, 0, W, H);
-        compositeCtx.restore();
-        
-        const pixel = compositeCtx.getImageData(W/2, H/2, 1, 1).data;
-        console.log("center pixel after bg draw:", pixel);
-    }
-    compositeCtx.drawImage(localBuffer, 0, 0, W, H);
-} else {
+            // Draw remote person's full video as background
+            if (remoteVideoDisplay.readyState >= 2) {
+                compositeCtx.save();
+                compositeCtx.translate(W, 0);
+                compositeCtx.scale(-1, 1);
+                compositeCtx.drawImage(remoteVideoDisplay, 0, 0, W, H);
+                compositeCtx.restore();
+            }
+            // Draw local person cut out (no background) on top
+            if (localBuffer.width > 1) {
+                compositeCtx.save();
+                compositeCtx.translate(W, 0);
+                compositeCtx.scale(-1, 1);
+                compositeCtx.drawImage(localBuffer, 0, 0, W, H);
+                compositeCtx.restore();
+            }
+        } else {
+            // remoteRemoveBackground: draw local full video, remote cutout on top
+            compositeCtx.save();
+            compositeCtx.translate(W, 0);
+            compositeCtx.scale(-1, 1);
             compositeCtx.drawImage(video, 0, 0, W, H);
-            compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
+            compositeCtx.restore();
+
+            if (remoteBuffer.width > 1) {
+                compositeCtx.save();
+                compositeCtx.translate(W, 0);
+                compositeCtx.scale(-1, 1);
+                compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
+                compositeCtx.restore();
+            }
         }
 
     } else {
