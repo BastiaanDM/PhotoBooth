@@ -1,5 +1,4 @@
 /* ---- Variables ---- */
-
 :root {
     --pastel-pink: #ffc0cb;
     --baby-blue: #89cff0;
@@ -9,9 +8,7 @@
     --background: #ffe0e5;
 }
 
-
 /* ---- Base ---- */
-
 body {
     background-color: var(--background);
     display: flex;
@@ -24,9 +21,7 @@ body {
     gap: 24px;
 }
 
-
 /* ---- Session UI ---- */
-
 #session-ui {
     display: flex;
     flex-direction: column;
@@ -90,9 +85,7 @@ body {
     margin: 0;
 }
 
-
 /* ---- Camera ---- */
-
 .camera {
     display: flex;
     flex-wrap: wrap;
@@ -124,20 +117,17 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     object-fit: cover;
 }
 
-#remote-slot {
-    transform: scaleX(-1);
-}
-
 #output-canvas {
     display: none;
 }
 
-#remote-video {
+#remote-video-display {
     width: 320px;
     height: 240px;
     border-color: var(--baby-blue);
     object-fit: cover;
     display: block;
+    transform: scaleX(-1);
 }
 
 #composite-canvas {
@@ -145,7 +135,6 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
 }
 
 /* ---- Buttons ---- */
-
 #capture-button, #toggle-button {
     padding: 12px 32px;
     border: none;
@@ -179,9 +168,13 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     transform: scale(1.05);
 }
 
+#toggle-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
 
 /* ---- Photobooth Strip ---- */
-
 .photobooth-strip {
     display: flex;
     flex-direction: column;
@@ -207,9 +200,4 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     letter-spacing: 0.1em;
     margin: 8px 0 0 0;
     text-align: center;
-}
-
-#composite-canvas {
-    border-color: var(--gold);
-    transform: scaleX(-1);
 }

@@ -11,12 +11,15 @@ let peerConnection = null;
 let localStream = null;
 let sessionCode = null;
 let processingVideo = false;
-let compositeMode = false;
 
 // ---- Remote State ----
 
 let remoteRemoveBackground = false;
 let remoteProcessingVideo = false;
+
+// ---- ICE Candidate Queue ----
+
+let iceCandidateQueue = [];
 
 // ---- Html Elements ----
 
@@ -25,6 +28,7 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("output-canvas");
 const ctx = canvas.getContext("2d");
 const remoteVideo = document.getElementById("remote-video");
+const remoteVideoDisplay = document.getElementById("remote-video-display");
 const strip = document.getElementById("strip");
 const captureButton = document.getElementById("capture-button");
 const toggleButton = document.getElementById("toggle-button");
@@ -89,10 +93,18 @@ async function processVideo() {
 }
 
 async function processRemoteVideo() {
-    const remoteVideoDisplay = document.getElementById("remote-video-display");
+    if (!remoteVideoDisplay) {
+        console.warn("remoteVideoDisplay not found");
+        remoteProcessingVideo = false;
+        return;
+    }
     console.log("processRemoteVideo started");
     while (remoteRemoveBackground) {
-        await remoteSegmentation.send({ image: remoteVideoDisplay });
+        if (remoteVideoDisplay.readyState >= 2) {
+            await remoteSegmentation.send({ image: remoteVideoDisplay });
+        } else {
+            await new Promise(r => setTimeout(r, 100));
+        }
     }
     remoteProcessingVideo = false;
 }
@@ -103,7 +115,6 @@ async function processRemoteVideo() {
 function drawComposite() {
     const W = 320;
     const H = 240;
-    const remoteVideoDisplay = document.getElementById("remote-video-display");
 
     if (removeBackground || remoteRemoveBackground) {
         compositeSlot.style.display = "flex";
@@ -116,15 +127,15 @@ function drawComposite() {
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-            // Draw remote person's full video as background
-            if (remoteVideoDisplay.readyState >= 2) {
+            // Draw remote person's full video as the background
+            if (remoteVideoDisplay && remoteVideoDisplay.readyState >= 2) {
                 compositeCtx.save();
                 compositeCtx.translate(W, 0);
                 compositeCtx.scale(-1, 1);
                 compositeCtx.drawImage(remoteVideoDisplay, 0, 0, W, H);
                 compositeCtx.restore();
             }
-            // Draw local person cut out (no background) on top
+            // Draw local person cut out (no background) on top, mirrored to match
             if (localBuffer.width > 1) {
                 compositeCtx.save();
                 compositeCtx.translate(W, 0);
@@ -201,8 +212,12 @@ async function createPeerConnection() {
     };
 
     peerConnection.ontrack = (event) => {
+        // Feed the hidden video for segmentation processing
         remoteVideo.srcObject = event.streams[0];
-        document.getElementById("remote-video-display").srcObject = event.streams[0];
+        // Feed the visible display video
+        if (remoteVideoDisplay) {
+            remoteVideoDisplay.srcObject = event.streams[0];
+        }
         console.log("remote stream received!", event.streams[0]);
     };
 
@@ -211,6 +226,17 @@ async function createPeerConnection() {
     });
 
     return peerConnection;
+}
+
+async function flushIceCandidateQueue() {
+    while (iceCandidateQueue.length > 0) {
+        const candidate = iceCandidateQueue.shift();
+        try {
+            await peerConnection.addIceCandidate(candidate);
+        } catch (e) {
+            console.warn("Failed to add queued ICE candidate:", e);
+        }
+    }
 }
 
 async function startCall() {
@@ -223,6 +249,7 @@ async function startCall() {
 async function handleOffer(offer) {
     await createPeerConnection();
     await peerConnection.setRemoteDescription(offer);
+    await flushIceCandidateQueue();
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     socket.emit("answer", answer, sessionCode);
@@ -230,10 +257,19 @@ async function handleOffer(offer) {
 
 async function handleAnswer(answer) {
     await peerConnection.setRemoteDescription(answer);
+    await flushIceCandidateQueue();
 }
 
 async function handleIceCandidate(candidate) {
-    await peerConnection.addIceCandidate(candidate);
+    if (peerConnection && peerConnection.remoteDescription) {
+        try {
+            await peerConnection.addIceCandidate(candidate);
+        } catch (e) {
+            console.warn("Failed to add ICE candidate:", e);
+        }
+    } else {
+        iceCandidateQueue.push(candidate);
+    }
 }
 
 async function getTurnCredentials() {
@@ -361,6 +397,7 @@ function takePicture() {
         photoIndex = photoIndex % 3 + 1;
     });
 }
+
 async function takePictures() {
     clearPhoto();
     await countdown(COUNTDOWN, showOverlay);
@@ -424,9 +461,6 @@ function writeLabel() {
 }
 
 function clearPhoto() {
-    const offscreen = new OffscreenCanvas(video.videoWidth || 320, video.videoHeight || 240);
-    const context = offscreen.getContext("2d");
-    context.fillStyle = "#aaaaaa";
     hideStrip();
 }
 

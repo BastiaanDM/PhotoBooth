@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Hidden video used for remote segmentation processing -->
+    <video id="remote-video" autoplay playsinline style="display:none; width:1px; height:1px;"></video>
 
     <div id="session-ui">
         <div id="join-ui">
@@ -21,25 +23,24 @@
     </div>
 
     <div class="camera">
-    <div class="camera-slot">
-        <p class="camera-label">You</p>
-        <video id="video" autoplay playsinline></video>
-        <canvas id="output-canvas"></canvas>
+        <div class="camera-slot">
+            <p class="camera-label">You</p>
+            <video id="video" autoplay playsinline></video>
+            <canvas id="output-canvas"></canvas>
+        </div>
+        <div class="camera-slot" id="composite-slot" style="display:none">
+            <p class="camera-label">Together</p>
+            <canvas id="composite-canvas"></canvas>
+        </div>
+        <div class="camera-slot" id="remote-slot">
+            <p class="camera-label">Them</p>
+            <video id="remote-video-display" autoplay playsinline></video>
+        </div>
+        <button id="toggle-button">Remove Background: OFF</button>
+        <button id="capture-button">📸 Take Photo</button>
     </div>
-    <div class="camera-slot" id="composite-slot" style="display:none">
-        <p class="camera-label">Together</p>
-        <canvas id="composite-canvas"></canvas>
-    </div>
-    <div class="camera-slot">
-        <p class="camera-label">Them</p>
-        <video id="remote-video" autoplay playsinline></video>
-    </div>
-    <button id="toggle-button">Remove Background: OFF</button>
-    <button id="capture-button">📸 Take Photo</button>
-</div>
 
-
-    <div class="photobooth-strip" id="strip">
+    <div class="photobooth-strip" id="strip" style="visibility:hidden;">
         <img id="photo1" src="" alt="Photo 1"/>
         <img id="photo2" src="" alt="Photo 2"/>
         <img id="photo3" src="" alt="Photo 3"/>
@@ -49,6 +50,5 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <script src="camera.js"></script>
-    
 </body>
 </html>
