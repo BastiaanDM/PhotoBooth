@@ -124,17 +124,20 @@ video, #output-canvas, #composite-canvas, #remote-canvas {
     object-fit: cover;
 }
 
+#remote-slot {
+    transform: scaleX(-1);
+}
+
 #output-canvas {
     display: none;
 }
 
 #remote-video {
-    position: fixed;
-    top: -9999px;
-    left: -9999px;
     width: 320px;
     height: 240px;
-    pointer-events: none;
+    border-color: var(--baby-blue);
+    object-fit: cover;
+    display: block;
 }
 
 #composite-canvas {
