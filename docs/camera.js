@@ -127,15 +127,11 @@ function drawComposite() {
         compositeCtx.clearRect(0, 0, W, H);
 
         if (removeBackground) {
-            // Draw remote person's full video as the background
+            // Draw remote person's full video as the background — unmirrored
             if (remoteVideoDisplay && remoteVideoDisplay.readyState >= 2) {
-                compositeCtx.save();
-                compositeCtx.translate(W, 0);
-                compositeCtx.scale(-1, 1);
                 compositeCtx.drawImage(remoteVideoDisplay, 0, 0, W, H);
-                compositeCtx.restore();
             }
-            // Draw local person cut out (no background) on top, mirrored to match
+            // Draw local cutout on top — mirrored (selfie convention)
             if (localBuffer.width > 1) {
                 compositeCtx.save();
                 compositeCtx.translate(W, 0);
@@ -144,19 +140,16 @@ function drawComposite() {
                 compositeCtx.restore();
             }
         } else {
-            // remoteRemoveBackground: draw local full video, remote cutout on top
+            // remoteRemoveBackground: draw local full video mirrored as background
             compositeCtx.save();
             compositeCtx.translate(W, 0);
             compositeCtx.scale(-1, 1);
             compositeCtx.drawImage(video, 0, 0, W, H);
             compositeCtx.restore();
 
+            // Draw remote cutout on top — unmirrored
             if (remoteBuffer.width > 1) {
-                compositeCtx.save();
-                compositeCtx.translate(W, 0);
-                compositeCtx.scale(-1, 1);
                 compositeCtx.drawImage(remoteBuffer, 0, 0, W, H);
-                compositeCtx.restore();
             }
         }
 
